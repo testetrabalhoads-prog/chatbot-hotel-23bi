@@ -246,7 +246,7 @@ async function pauseForHuman(jid) {
 }
 
 async function markSeen(messageId) {
-  if (!messageId) return true;
+  if (!messageId) return false;
   try {
     await pool.query(
       "INSERT INTO bot_seen_messages(message_id) VALUES($1)",
@@ -258,85 +258,257 @@ async function markSeen(messageId) {
     throw e;
   }
 }
-
 async function processIncoming(payload) {
-  if (payload?.event !== "messages.upsert") return;
+  if (payload?.event !== "messages.upsert") {
+    return;
+  }
 
   const d = payload.data || {};
-  const jid = d.keyRemoteJid;
-  if (!jid || d.isGroup || jid.endsWith("@g.us")) return;
 
-  if (await markSeen(d.messageId)) return;
+  /*
+    Algumas versões do whatsapp-api-go retornam
+    os campos diretamente em data.
 
-  if (d.keyFromMe) {
+    Outras retornam parte deles dentro de content.
+
+    Então aceitamos os dois formatos.
+  */
+  const c =
+    d.content &&
+    typeof d.content === "object"
+      ? d.content
+      : {};
+
+  const jid =
+    d.keyRemoteJid ||
+    c.keyRemoteJid ||
+    d.chatJid ||
+    c.chatJid ||
+    d.keyLid ||
+    c.keyLid;
+
+  const keyFromMe =
+    d.keyFromMe ??
+    c.keyFromMe ??
+    false;
+
+  const isGroup =
+    d.isGroup ??
+    d.metadata?.isGroup ??
+    c.isGroup ??
+    (jid
+      ? jid.endsWith("@g.us")
+      : false);
+
+  const messageId =
+    d.messageId ||
+    c.messageId ||
+    d.keyId ||
+    c.keyId ||
+    String(d.id || c.id || "");
+
+  const text =
+    d.text ||
+    d.content?.text ||
+    d.message?.conversation ||
+    d.message?.extendedTextMessage?.text ||
+    "";
+
+  console.log("🔎 Mensagem interpretada:", {
+    jid,
+    messageId,
+    keyFromMe,
+    isGroup,
+    text,
+  });
+
+  if (!jid) {
+    console.log(
+      "⚠️ Mensagem ignorada: JID não encontrado."
+    );
+    return;
+  }
+
+  if (isGroup || jid.endsWith("@g.us")) {
+    console.log(
+      "ℹ️ Mensagem de grupo ignorada."
+    );
+    return;
+  }
+
+  if (await markSeen(messageId)) {
+    console.log(
+      `ℹ️ Mensagem duplicada ignorada: ${messageId}`
+    );
+    return;
+  }
+
+  /*
+    Se foi uma mensagem enviada manualmente
+    pelo próprio WhatsApp do hotel,
+    pausamos o bot nessa conversa.
+  */
+  if (keyFromMe) {
     await pauseForHuman(jid);
     return;
   }
 
-  const text = d.content?.text;
-  if (!text) return;
-
-  const normalized = normalizarTexto(text);
-  console.log(`📩 ${jid}: ${text}`);
-
-  let session = await getSession(jid);
-
-  if (session?.paused_until && Number(session.paused_until) > Date.now()) {
-    console.log(`👤 Bot pausado para ${jid}`);
+  if (!text) {
+    console.log(
+      "ℹ️ Mensagem sem texto ignorada."
+    );
     return;
   }
 
-  const numero = phoneFromJid(jid);
+  const normalized =
+    normalizarTexto(text);
+
+  console.log(
+    `📩 ${jid}: ${text}`
+  );
+
+  let session =
+    await getSession(jid);
+
+  /*
+    Se o atendente humano respondeu recentemente,
+    o bot fica quieto.
+  */
+  if (
+    session?.paused_until &&
+    Number(session.paused_until) >
+      Date.now()
+  ) {
+    console.log(
+      `👤 Bot pausado para ${jid}`
+    );
+    return;
+  }
+
+  const numero =
+    phoneFromJid(jid);
+
   if (!numero) {
-    console.error("❌ Não consegui extrair número do JID:", jid);
+    console.error(
+      "❌ Não consegui extrair número do JID:",
+      jid
+    );
     return;
   }
 
+  /*
+    Palavras que iniciam/reiniciam o menu.
+  */
   if (deveIniciar(normalized)) {
     await startSession(jid);
-    await enviarTexto(numero, MENU);
+
+    console.log(
+      `🤖 Iniciando atendimento para ${numero}`
+    );
+
+    await enviarTexto(
+      numero,
+      MENU
+    );
+
     return;
   }
 
+  /*
+    Fora de uma sessão ativa,
+    mensagens comuns são ignoradas.
+  */
   if (!session?.active) {
-    console.log(`ℹ️ ${jid} sem sessão ativa. Ignorando.`);
+    console.log(
+      `ℹ️ ${jid} sem sessão ativa. Ignorando.`
+    );
     return;
   }
 
   await touchSession(jid);
 
   if (normalized === "1") {
-    await enviarTexto(numero, SOLICITACAO);
-    await enviarTexto(numero, MENU);
-    return;
-  }
-  if (normalized === "2") {
-    await enviarTexto(numero, VALORES);
-    await enviarTexto(numero, MENU);
-    return;
-  }
-  if (normalized === "3") {
-    await enviarTexto(numero, HORARIOS);
-    await enviarTexto(numero, MENU);
-    return;
-  }
-  if (normalized === "4") {
-    await enviarTexto(numero, CONTATOS);
-    await enviarTexto(numero, MENU);
-    return;
-  }
-  if (normalized === "5") {
-    await enviarTexto(numero, CANCELAMENTO);
-    await endSession(jid);
-    return;
-  }
-  if (normalized === "6") {
-    await enviarTexto(numero, FINALIZAR);
-    await endSession(jid);
+    await enviarTexto(
+      numero,
+      SOLICITACAO
+    );
+
+    await enviarTexto(
+      numero,
+      MENU
+    );
+
     return;
   }
 
-  await enviarTexto(numero, INVALIDA);
+  if (normalized === "2") {
+    await enviarTexto(
+      numero,
+      VALORES
+    );
+
+    await enviarTexto(
+      numero,
+      MENU
+    );
+
+    return;
+  }
+
+  if (normalized === "3") {
+    await enviarTexto(
+      numero,
+      HORARIOS
+    );
+
+    await enviarTexto(
+      numero,
+      MENU
+    );
+
+    return;
+  }
+
+  if (normalized === "4") {
+    await enviarTexto(
+      numero,
+      CONTATOS
+    );
+
+    await enviarTexto(
+      numero,
+      MENU
+    );
+
+    return;
+  }
+
+  if (normalized === "5") {
+    await enviarTexto(
+      numero,
+      CANCELAMENTO
+    );
+
+    await endSession(jid);
+
+    return;
+  }
+
+  if (normalized === "6") {
+    await enviarTexto(
+      numero,
+      FINALIZAR
+    );
+
+    await endSession(jid);
+
+    return;
+  }
+
+  await enviarTexto(
+    numero,
+    INVALIDA
+  );
 }
 
 app.get("/health", async (_req, res) => {
