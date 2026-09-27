@@ -356,9 +356,18 @@ app.get("/health", async (_req, res) => {
 
 app.post("/webhook", async (req, res) => {
   if (req.query.secret !== WEBHOOK_SECRET) {
+    console.log("❌ Webhook recusado: secret incorreto");
     return res.status(403).json({ error: "forbidden" });
   }
+
+  console.log("==============================================");
+  console.log("📨 WEBHOOK RECEBIDO");
+  console.log("Evento:", req.body?.event);
+  console.log("Data:", JSON.stringify(req.body?.data, null, 2));
+  console.log("==============================================");
+
   res.status(200).json({ ok: true });
+
   processIncoming(req.body).catch((e) =>
     console.error("❌ Erro no webhook:", e.stack || e)
   );
