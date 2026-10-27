@@ -44,6 +44,10 @@ const pool = new Pool({
 
 const MENU = `Olá, a equipe do Hotel de Trânsito - 23º BI agradece o seu contato. Como podemos ajudar?
 
+*NÃO REALIZAMOS LIGAÇÕES VIA WHATSAPP.*
+
+*HORÁRIOS DE FUNCIONAMENTO: segunda a quinta, das 7h30 às 16h; sexta, das 7h30 às 11h. Não atendemos aos finais de semana e feriados.*
+
 Para que possamos dar prosseguimento ao atendimento, digite o número de uma das opções abaixo:
 
 1. Solicitação/Disponibilidade
