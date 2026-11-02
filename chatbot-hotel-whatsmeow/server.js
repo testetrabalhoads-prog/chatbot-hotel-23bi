@@ -104,7 +104,7 @@ const FINALIZAR = `Agradecemos o contato.
 
 Para iniciar um novo chat, digite "Olá".`;
 
-const CONFIRMACAO_ATENDIMENTO = `Mensagem recebida!\n\nAssim que possível, um atendente analisará as informações enviadas pelo senhor e dará continuidade ao atendimento.`;
+const CONFIRMACAO_ATENDIMENTO = `Mensagem recebida!\n\nAssim que possível, um atendente analisará as informações enviadas pelo senhor e dará continuidade ao atendimento.\n\nPara iniciar um novo chat com o chat-bot, digite *Olá*.`;
 
 const PALAVRAS_INICIO = [
   "oi",
