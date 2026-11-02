@@ -507,10 +507,9 @@ async function processIncoming(payload) {
     return;
   }
 
-  await enviarTexto(
-    numero,
-    INVALIDA
-  );
+  // Mensagens livres (nome, datas, dúvidas e dados de reserva)
+  // ficam disponíveis para o atendimento humano sem resposta automática.
+  console.log(`ℹ️ Mensagem livre de ${jid} recebida; nenhuma resposta automática enviada.`);
 }
 
 app.get("/health", async (_req, res) => {
