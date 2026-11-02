@@ -44,7 +44,7 @@ const pool = new Pool({
 
 const MENU = `Olá, a equipe do Hotel de Trânsito - 23º BI agradece o seu contato. Como podemos ajudar?
 
-*NÃO REALIZAMOS LIGAÇÕES VIA WHATSAPP.*
+*NÃO ATENDEMOS LIGAÇÕES VIA WHATSAPP.*
 
 *HORÁRIOS DE FUNCIONAMENTO: segunda a quinta, das 7h30 às 16h; sexta, das 7h30 às 11h. Não atendemos aos finais de semana e feriados.*
 
@@ -132,7 +132,7 @@ function normalizarTexto(texto) {
 
 function deveIniciar(texto) {
   const msg = normalizarTexto(texto);
-  return PALAVRAS_INICIO.some((p) => msg.includes(normalizarTexto(p)));
+  return PALAVRAS_INICIO.some((p) => msg === normalizarTexto(p));
 }
 
 function phoneFromJid(jid) {
@@ -432,16 +432,14 @@ async function processIncoming(payload) {
   await touchSession(jid);
 
   if (normalized === "1") {
+    // Após solicitar os dados, o atendimento fica com a equipe humana.
+    // A sessão automática é encerrada antes da resposta do hóspede,
+    // evitando que nome, datas e quantidade sejam tratados como menu.
+    await endSession(jid);
     await enviarTexto(
       numero,
       SOLICITACAO
     );
-
-    await enviarTexto(
-      numero,
-      MENU
-    );
-
     return;
   }
 
