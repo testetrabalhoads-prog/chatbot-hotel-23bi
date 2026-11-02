@@ -104,9 +104,7 @@ const FINALIZAR = `Agradecemos o contato.
 
 Para iniciar um novo chat, digite "Olá".`;
 
-const INVALIDA = `Opção inválida.
-
-Por favor, digite um número de 1 a 6.`;
+const CONFIRMACAO_ATENDIMENTO = `Mensagem recebida!\n\nAssim que possível, um atendente analisará as informações enviadas pelo senhor e dará continuidade ao atendimento.`;
 
 const PALAVRAS_INICIO = [
   "oi",
@@ -435,7 +433,6 @@ async function processIncoming(payload) {
     // Após solicitar os dados, o atendimento fica com a equipe humana.
     // A sessão automática é encerrada antes da resposta do hóspede,
     // evitando que nome, datas e quantidade sejam tratados como menu.
-    await endSession(jid);
     await enviarTexto(
       numero,
       SOLICITACAO
@@ -509,7 +506,8 @@ async function processIncoming(payload) {
 
   // Mensagens livres (nome, datas, dúvidas e dados de reserva)
   // ficam disponíveis para o atendimento humano sem resposta automática.
-  console.log(`ℹ️ Mensagem livre de ${jid} recebida; nenhuma resposta automática enviada.`);
+  await endSession(jid);
+  await enviarTexto(numero, CONFIRMACAO_ATENDIMENTO);
 }
 
 app.get("/health", async (_req, res) => {
