@@ -372,21 +372,6 @@ async function processIncoming(payload) {
   let session =
     await getSession(jid);
 
-  /*
-    Se o atendente humano respondeu recentemente,
-    o bot fica quieto.
-  */
-  if (
-    session?.paused_until &&
-    Number(session.paused_until) >
-      Date.now()
-  ) {
-    console.log(
-      `👤 Bot pausado para ${jid}`
-    );
-    return;
-  }
-
   const numero =
     phoneFromJid(jid);
 
@@ -413,6 +398,23 @@ async function processIncoming(payload) {
       MENU
     );
 
+    return;
+  }
+
+  // O reinício explícito acima funciona mesmo após uma pausa humana.
+  // Para qualquer outra mensagem, respeitamos a pausa do atendente.
+  /*
+    Se o atendente humano respondeu recentemente,
+    o bot fica quieto.
+  */
+  if (
+    session?.paused_until &&
+    Number(session.paused_until) >
+      Date.now()
+  ) {
+    console.log(
+      `👤 Bot pausado para ${jid}`
+    );
     return;
   }
 
